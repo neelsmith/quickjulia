@@ -17,11 +17,39 @@ end
 using TextAnalysis, CitableCorpus, CitableText, PlutoUI, Markdown, CiteEXchange, HTTP
 
 # ╔═╡ 3ced021a-5548-464c-8448-4cdbf62c2fb0
-md">Play with it"
+md""">## Explore salient terms
+>
+>Search the text of Dué and Ebbott's translation of *Iliad* 10.  The display shows the TF-IDF score for that term in that line.
+>
+>(In this notebook, each *line* is treated as a *document*.)
+"""
 
 # ╔═╡ c6405d2c-5c14-4ee1-bf6d-165f3e0d9ec3
 md"""
-Term: $(@bind term TextField(;default="ship"))
+Term: $(@bind term TextField(;default="bronze-wearing"))
+"""
+
+# ╔═╡ 99dab151-d9bb-43d0-b215-3c38482d3d50
+md">(Peek at internals of how `TextAnalysis` module indexing works:)"
+
+# ╔═╡ cf4f497b-0ef6-4e50-8aef-f0fe945222dc
+md">Formatting"
+
+# ╔═╡ 3ecf3e9f-328e-4265-b99c-ed5784be1301
+# Highlight term in txt
+function highlight(term, txt)
+	wrapped = replace(txt, term => """<span class="hilite">$term</span>""")
+	wrapped
+end
+
+# ╔═╡ 91dee988-3378-47da-803f-4d839b828c4a
+css = html"""
+<style>
+.hilite {
+	background-color: yellow;
+	font-weight: bold;
+}
+</style>
 """
 
 # ╔═╡ d1531ae6-06a8-4723-88cc-c4fe00d8f8a6
@@ -74,22 +102,8 @@ corp = Corpus(docs)
 # The document is accessible as corp.documents[INDEXVALUE]
 documentindices = corp[term]
 
-# ╔═╡ 2f5200bc-03c7-4423-b23b-6e0fdf9e9ade
-begin
-	psgs = []
-	for idx in documentindices
-		push!(psgs, string("1. `doc. $(idx)` ", corp.documents[idx].text))
-	end
-	#findfirst(isequal(term), lexkeys)
-	Markdown.parse(join(psgs, "\n"))
-end
-
-
 # ╔═╡ f274badc-adb1-4136-ab45-e614c08618a1
 matchcount = length(documentindices)
-
-# ╔═╡ e05640e8-3360-475c-ac83-173f2f9b9848
-md"$(corp.documents[1].text)"
 
 # ╔═╡ 2699073c-dd9d-4dae-af37-077e85fad819
 lex = begin
@@ -101,56 +115,40 @@ end
 # ╔═╡ 93533849-f297-4479-9b63-d4f6754e4e08
 m = DocumentTermMatrix(corp)
 
-# ╔═╡ 21ab08d2-59a2-4347-b915-ab87d71b5c57
-dtm(m, :dense)
-
-# ╔═╡ 0caceb74-ece3-41b6-aae5-b55f34b88cd1
-tfidf = tf_idf(m)
-
-# ╔═╡ dabf76d8-faea-43a3-9589-9521af253f32
-lexkeys = keys(lex) |> collect
-
-# ╔═╡ 58dcdc0a-6770-4b2f-ad9f-b12d820b6526
-termidx = findfirst(isequal(term), lexkeys)
+# ╔═╡ 0526b4e1-cd16-4fab-8951-1c1bfac4d465
+# Find index of term within document matrix
+termidx = findfirst(t -> t == term, m.terms)
 
 # ╔═╡ e2e87b56-8003-41f8-8660-55e557665276
 begin
 	label = matchcount == 1 ? "**1** occurrence" : "**$matchcount** occurrences"
-	display = """$label of `term $termidx` **$term**.
+	display = """$label of `term $termidx` *$term*.
 
-Term frequency in corpus: $(lexical_frequency(corp, term))
+Term frequency in corpus: $(lexical_frequency(corp, term)))
 """
 	Markdown.parse(display)
 
 end
 
-# ╔═╡ b32c1eb6-e56b-4d9d-b172-44dd76fd3a2d
-begin	
-	wds = []
-	i = 0
-	for w in onerow
-		i = i + 1
-		if (w > 0)
-			push!(wds, (w,lexkeys[i]))
-		end
+# ╔═╡ 0caceb74-ece3-41b6-aae5-b55f34b88cd1
+tfidf = tf_idf(m)
+
+# ╔═╡ 2f5200bc-03c7-4423-b23b-6e0fdf9e9ade
+begin
+	psgs = ["<ol>"]
+	for idx in documentindices
+		score  = tfidf[idx,termidx]
+		hilited = highlight(term, corp.documents[idx].text)
+		push!(psgs, string("<li><code>doc. $(idx): tf-idf score ", round(score; digits = 3), "</code> ", hilited))
 	end
-	wds
+	push!(psgs, "</ol>")
+	#findfirst(isequal(term), lexkeys)
+	HTML(join(psgs, "\n"))
 end
 
-# ╔═╡ 8e870cbc-1bd7-4864-918f-4e1193cbb352
-lexkeys[10]
 
-# ╔═╡ 0526b4e1-cd16-4fab-8951-1c1bfac4d465
-reverseidx =  findfirst(isequal(term), lexkeys)
-
-# ╔═╡ ffb5eee5-89a0-4994-86bb-7c8ebd376bff
-lexkeys[9777]
-
-# ╔═╡ 906b8c4d-4e60-4b6c-85a7-a16d3d237e9a
-lexkeys[2]
-
-# ╔═╡ 5fcf5bb5-d96c-4619-9ac1-04d04a1ba8fe
-lexkeys |> length
+# ╔═╡ dabf76d8-faea-43a3-9589-9521af253f32
+m.terms
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -601,16 +599,18 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 """
 
 # ╔═╡ Cell order:
-# ╠═a492f62a-d420-11eb-04f5-29615000168a
+# ╟─a492f62a-d420-11eb-04f5-29615000168a
 # ╟─3ced021a-5548-464c-8448-4cdbf62c2fb0
 # ╟─c6405d2c-5c14-4ee1-bf6d-165f3e0d9ec3
-# ╠═e2e87b56-8003-41f8-8660-55e557665276
-# ╠═2f5200bc-03c7-4423-b23b-6e0fdf9e9ade
-# ╠═58dcdc0a-6770-4b2f-ad9f-b12d820b6526
-# ╠═7bccf880-ae21-40ac-ac99-7e1bf59f683b
-# ╠═f274badc-adb1-4136-ab45-e614c08618a1
-# ╟─b32c1eb6-e56b-4d9d-b172-44dd76fd3a2d
-# ╠═e05640e8-3360-475c-ac83-173f2f9b9848
+# ╟─e2e87b56-8003-41f8-8660-55e557665276
+# ╟─2f5200bc-03c7-4423-b23b-6e0fdf9e9ade
+# ╟─99dab151-d9bb-43d0-b215-3c38482d3d50
+# ╟─0526b4e1-cd16-4fab-8951-1c1bfac4d465
+# ╟─7bccf880-ae21-40ac-ac99-7e1bf59f683b
+# ╟─f274badc-adb1-4136-ab45-e614c08618a1
+# ╟─cf4f497b-0ef6-4e50-8aef-f0fe945222dc
+# ╟─3ecf3e9f-328e-4265-b99c-ed5784be1301
+# ╟─91dee988-3378-47da-803f-4d839b828c4a
 # ╟─d1531ae6-06a8-4723-88cc-c4fe00d8f8a6
 # ╟─bba171b2-f0a9-4172-a7e9-5d365a1b4f22
 # ╟─5d904b6c-80c3-4a8a-ba11-82fba50be209
@@ -621,17 +621,11 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─f60970e8-ca28-458a-b23d-a581c960e3f1
 # ╟─33a8a1e4-e56e-4b32-b517-430b6ab40cb9
 # ╟─6b3bc116-d544-4470-8b44-64ab0db15739
-# ╠═8dffd39f-f4a4-45d9-96d5-1f05084a1e96
-# ╠═4f5c8bae-81d5-4475-9936-9e4e4aacaadb
-# ╠═2699073c-dd9d-4dae-af37-077e85fad819
-# ╠═93533849-f297-4479-9b63-d4f6754e4e08
-# ╠═21ab08d2-59a2-4347-b915-ab87d71b5c57
-# ╠═0caceb74-ece3-41b6-aae5-b55f34b88cd1
-# ╠═dabf76d8-faea-43a3-9589-9521af253f32
-# ╠═8e870cbc-1bd7-4864-918f-4e1193cbb352
-# ╠═0526b4e1-cd16-4fab-8951-1c1bfac4d465
-# ╠═ffb5eee5-89a0-4994-86bb-7c8ebd376bff
-# ╠═906b8c4d-4e60-4b6c-85a7-a16d3d237e9a
-# ╠═5fcf5bb5-d96c-4619-9ac1-04d04a1ba8fe
+# ╟─8dffd39f-f4a4-45d9-96d5-1f05084a1e96
+# ╟─4f5c8bae-81d5-4475-9936-9e4e4aacaadb
+# ╟─2699073c-dd9d-4dae-af37-077e85fad819
+# ╟─93533849-f297-4479-9b63-d4f6754e4e08
+# ╟─0caceb74-ece3-41b6-aae5-b55f34b88cd1
+# ╟─dabf76d8-faea-43a3-9589-9521af253f32
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
