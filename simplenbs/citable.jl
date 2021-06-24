@@ -14,18 +14,39 @@ macro bind(def, element)
 end
 
 # ╔═╡ a492f62a-d420-11eb-04f5-29615000168a
-using TextAnalysis, CitableCorpus, CitableText, PlutoUI, Markdown, SparseArrays
+using TextAnalysis, CitableCorpus, CitableText, PlutoUI, Markdown, CiteEXchange, HTTP
 
 # ╔═╡ 3ced021a-5548-464c-8448-4cdbf62c2fb0
 md">Play with it"
 
 # ╔═╡ c6405d2c-5c14-4ee1-bf6d-165f3e0d9ec3
 md"""
-Term: $(@bind term TextField())
+Term: $(@bind term TextField(;default="ship"))
 """
 
 # ╔═╡ d1531ae6-06a8-4723-88cc-c4fe00d8f8a6
 md"> Citable text passages and corpora"
+
+# ╔═╡ 5d904b6c-80c3-4a8a-ba11-82fba50be209
+xlation = "https://raw.githubusercontent.com/homermultitext/hmt-archive/master/archive/translations/book_ten_due_ebbott.cex"
+
+# ╔═╡ 42ea5cd8-e6a5-4214-b243-caad4f6299d9
+# From a URL pointing to a CEX file, get the text content of 
+# ctsdata blocks
+function txtfromurl(url)
+	str = HTTP.get(url).body |> String
+	blks = blocks(str)
+	txt = datafortype("ctsdata", blks)
+	c = CitableCorpus.fromdelimited(CitableTextCorpus, join(txt, "\n"))
+	txtcorp = map(cn -> cn.text, c.corpus)
+	txtcorp
+end
+
+# ╔═╡ bba171b2-f0a9-4172-a7e9-5d365a1b4f22
+srcdocs = txtfromurl(xlation)
+
+# ╔═╡ 9fc91194-e193-4a82-8283-1a3e55dff4dc
+md">Other"
 
 # ╔═╡ 5b2cb068-2f9d-4877-8124-f8640c361543
 url = "https://raw.githubusercontent.com/hmteditors/composite-summer21/main/data/s21corpus-normed.cex"
@@ -40,10 +61,10 @@ comments = filter(cn -> !endswith(cn.urn.urn, "ref"), c.corpus)
 comments |> length
 
 # ╔═╡ 6b3bc116-d544-4470-8b44-64ab0db15739
-md">julia TextAnalysis structures"
+md">julia `TextAnalysis` structures"
 
 # ╔═╡ 8dffd39f-f4a4-45d9-96d5-1f05084a1e96
-docs = map(sch -> StringDocument(sch.text), comments)
+docs = map(s -> StringDocument(s), srcdocs)
 
 # ╔═╡ 4f5c8bae-81d5-4475-9936-9e4e4aacaadb
 corp = Corpus(docs)
@@ -67,9 +88,6 @@ end
 # ╔═╡ f274badc-adb1-4136-ab45-e614c08618a1
 matchcount = length(documentindices)
 
-# ╔═╡ e5d54d23-a011-4d85-a02b-3773ffde453c
-onerow = dtv(corp[3514], lexicon(corp))
-
 # ╔═╡ e05640e8-3360-475c-ac83-173f2f9b9848
 md"$(corp.documents[1].text)"
 
@@ -89,12 +107,6 @@ dtm(m, :dense)
 # ╔═╡ 0caceb74-ece3-41b6-aae5-b55f34b88cd1
 tfidf = tf_idf(m)
 
-# ╔═╡ 69bb76bb-1df7-4a73-9d50-3cebdb5ec714
-docrow = tfidf[3514, :]
-
-# ╔═╡ 7f9c9d7b-a30b-4d55-a1e1-e058b8284e4d
-typeof(docrow)
-
 # ╔═╡ dabf76d8-faea-43a3-9589-9521af253f32
 lexkeys = keys(lex) |> collect
 
@@ -112,9 +124,6 @@ Term frequency in corpus: $(lexical_frequency(corp, term))
 
 end
 
-# ╔═╡ 2d8500fa-b6de-475d-8198-25bd075e5fff
-lexkeys[termidx]
-
 # ╔═╡ b32c1eb6-e56b-4d9d-b172-44dd76fd3a2d
 begin	
 	wds = []
@@ -127,15 +136,6 @@ begin
 	end
 	wds
 end
-
-# ╔═╡ da350185-5826-4581-a0ca-d46eac368897
-lexkeys[8193]
-
-# ╔═╡ 04334c0e-75e6-4ef1-acca-16bba039c62a
-a = ["x", "y", "z", "alpha"]
-
-# ╔═╡ b5f4cb66-8fd6-4364-bea2-d06a9ad8c397
-typeof(a)
 
 # ╔═╡ 8e870cbc-1bd7-4864-918f-4e1193cbb352
 lexkeys[10]
@@ -152,24 +152,24 @@ lexkeys[2]
 # ╔═╡ 5fcf5bb5-d96c-4619-9ac1-04d04a1ba8fe
 lexkeys |> length
 
-# ╔═╡ 615c83b0-a06e-4871-9a5b-c08e7c9aca33
-
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
-[compat]
-CitableCorpus = "~0.2.1"
-CitableText = "~0.9.0"
-PlutoUI = "~0.7.9"
-TextAnalysis = "~0.7.3"
-
 [deps]
 CitableCorpus = "cf5ac11a-93ef-4a1a-97a3-f6af101603b5"
 CitableText = "41e66566-473b-49d4-85b7-da83b66615d8"
+CiteEXchange = "e2e9ead3-1b6c-4e96-b95f-43e6ab899178"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 TextAnalysis = "a2db99b7-8b79-58f8-94bf-bbc811eef33d"
+
+[compat]
+CitableCorpus = "~0.2.1"
+CitableText = "~0.9.0"
+CiteEXchange = "~0.3.0"
+HTTP = "~0.9.10"
+PlutoUI = "~0.7.9"
+TextAnalysis = "~0.7.3"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -215,11 +215,23 @@ git-tree-sha1 = "ce07aadee5fe89c3e72667a72ea804502b7e2dcf"
 uuid = "cf5ac11a-93ef-4a1a-97a3-f6af101603b5"
 version = "0.2.1"
 
+[[CitableObject]]
+deps = ["CitableBase", "DocStringExtensions", "Documenter", "Test"]
+git-tree-sha1 = "26433318def871240c90de244a364f056ace7041"
+uuid = "e2b2f5ea-1cd8-4ce8-9b2b-05dad64c2a57"
+version = "0.6.0"
+
 [[CitableText]]
 deps = ["BenchmarkTools", "CitableBase", "DocStringExtensions", "Documenter", "Test"]
 git-tree-sha1 = "3d95c0ceea520fae5248a6842026b99d6ca23356"
 uuid = "41e66566-473b-49d4-85b7-da83b66615d8"
 version = "0.9.0"
+
+[[CiteEXchange]]
+deps = ["CitableObject", "DocStringExtensions", "Documenter", "Test"]
+git-tree-sha1 = "ad1d80adea90ef286b9f1cfd7de62e71d2c48b4c"
+uuid = "e2e9ead3-1b6c-4e96-b95f-43e6ab899178"
+version = "0.3.0"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -539,9 +551,9 @@ version = "1.0.1"
 
 [[Tables]]
 deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "LinearAlgebra", "TableTraits", "Test"]
-git-tree-sha1 = "8ed4a3ea724dac32670b062be3ef1c1de6773ae8"
+git-tree-sha1 = "aa30f8bb63f9ff3f8303a06c604c8500a69aa791"
 uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
-version = "1.4.4"
+version = "1.4.3"
 
 [[Tar]]
 deps = ["ArgTools", "SHA"]
@@ -593,37 +605,33 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─3ced021a-5548-464c-8448-4cdbf62c2fb0
 # ╟─c6405d2c-5c14-4ee1-bf6d-165f3e0d9ec3
 # ╠═e2e87b56-8003-41f8-8660-55e557665276
-# ╟─2f5200bc-03c7-4423-b23b-6e0fdf9e9ade
+# ╠═2f5200bc-03c7-4423-b23b-6e0fdf9e9ade
 # ╠═58dcdc0a-6770-4b2f-ad9f-b12d820b6526
-# ╠═2d8500fa-b6de-475d-8198-25bd075e5fff
-# ╟─7bccf880-ae21-40ac-ac99-7e1bf59f683b
+# ╠═7bccf880-ae21-40ac-ac99-7e1bf59f683b
 # ╠═f274badc-adb1-4136-ab45-e614c08618a1
-# ╠═69bb76bb-1df7-4a73-9d50-3cebdb5ec714
-# ╠═7f9c9d7b-a30b-4d55-a1e1-e058b8284e4d
-# ╠═e5d54d23-a011-4d85-a02b-3773ffde453c
-# ╠═b32c1eb6-e56b-4d9d-b172-44dd76fd3a2d
-# ╟─e05640e8-3360-475c-ac83-173f2f9b9848
-# ╟─da350185-5826-4581-a0ca-d46eac368897
+# ╟─b32c1eb6-e56b-4d9d-b172-44dd76fd3a2d
+# ╠═e05640e8-3360-475c-ac83-173f2f9b9848
 # ╟─d1531ae6-06a8-4723-88cc-c4fe00d8f8a6
+# ╟─bba171b2-f0a9-4172-a7e9-5d365a1b4f22
+# ╟─5d904b6c-80c3-4a8a-ba11-82fba50be209
+# ╟─42ea5cd8-e6a5-4214-b243-caad4f6299d9
+# ╟─9fc91194-e193-4a82-8283-1a3e55dff4dc
 # ╟─5b2cb068-2f9d-4877-8124-f8640c361543
 # ╟─09e0722b-9571-4c94-a6cc-b408fc3f13cc
 # ╟─f60970e8-ca28-458a-b23d-a581c960e3f1
 # ╟─33a8a1e4-e56e-4b32-b517-430b6ab40cb9
 # ╟─6b3bc116-d544-4470-8b44-64ab0db15739
-# ╟─8dffd39f-f4a4-45d9-96d5-1f05084a1e96
-# ╟─4f5c8bae-81d5-4475-9936-9e4e4aacaadb
+# ╠═8dffd39f-f4a4-45d9-96d5-1f05084a1e96
+# ╠═4f5c8bae-81d5-4475-9936-9e4e4aacaadb
 # ╠═2699073c-dd9d-4dae-af37-077e85fad819
 # ╠═93533849-f297-4479-9b63-d4f6754e4e08
 # ╠═21ab08d2-59a2-4347-b915-ab87d71b5c57
 # ╠═0caceb74-ece3-41b6-aae5-b55f34b88cd1
 # ╠═dabf76d8-faea-43a3-9589-9521af253f32
-# ╠═04334c0e-75e6-4ef1-acca-16bba039c62a
-# ╠═b5f4cb66-8fd6-4364-bea2-d06a9ad8c397
 # ╠═8e870cbc-1bd7-4864-918f-4e1193cbb352
 # ╠═0526b4e1-cd16-4fab-8951-1c1bfac4d465
 # ╠═ffb5eee5-89a0-4994-86bb-7c8ebd376bff
 # ╠═906b8c4d-4e60-4b6c-85a7-a16d3d237e9a
 # ╠═5fcf5bb5-d96c-4619-9ac1-04d04a1ba8fe
-# ╠═615c83b0-a06e-4871-9a5b-c08e7c9aca33
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

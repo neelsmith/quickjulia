@@ -14,7 +14,7 @@ tfidf = tf_idf(m)
 
 doc1row = dtv(c[1],lexicon(c))
 doc2row = dtv(c[2],lexicon(c))
-keylist = keys(invidx)  |>  collect
+
 
 
 println(doc1row)
@@ -23,8 +23,24 @@ println(keylist)
 println(c[2].text)
 keylist |> length
 
+function reverseidx(trm, ks)   
+    idx = nothing
+    #findfirst(isequal(trm), ks)
+    for i in 1:length(ks)
+        if isassigned(ks,i)
+            if ks[i] == trm
+                idx = i
+                println("FOUND TERM KEY $i")
+            end
+        end
+    end
+    idx
+end
+
+
 function reportidf(term)
-    termidx = findfirst(isequal(term), keylist)
+    #termidx = findfirst(isequal(term), keylist)
+    termidx = reverseidx(term,lex.keys)
     keylist[termidx]
     for i in 1:length(c.documents)
         println(term," in document ",i, " has tf-idf ", tfidf[i, termidx])
@@ -32,6 +48,11 @@ function reportidf(term)
 end
 
 term = "seven"
+termidx = reverseidx(term,lex.keys)
+
+
+termidx
 reportidf(term)
 
 tfidf[2,5]
+
